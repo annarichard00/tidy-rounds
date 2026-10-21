@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tidy Rounds</title>
+<meta name="description" content="A timed daily cleaning checklist, room by room. Whatever you skip goes to the top tomorrow.">
+<meta name="theme-color" content="#eef4f3" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0f1c1f" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Tidy Rounds">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap">
+<style>
+/* Layout: one narrow column — timer bar on top, "Up first" leftovers, then room cards you tick through */
+:root{
+  --bg:#eef4f3; --surface:#ffffff; --ink:#17323a; --muted:#5d7379; --line:#d3e1df;
+  --accent:#1f7a6d; --sun:#f2c14e; --sunink:#17323a; --done:#9bb3b0;
+  --display:"Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --body:"Figtree", system-ui, -apple-system, sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f1c1f; --surface:#162a2e; --ink:#e3efed; --muted:#93aaa7; --line:#24403f;
+  --accent:#4fc1ac; --sun:#f2c14e; --sunink:#17323a; --done:#56706d; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1c1f; --surface:#162a2e; --ink:#e3efed; --muted:#93aaa7; --line:#24403f;
+  --accent:#4fc1ac; --sun:#f2c14e; --sunink:#17323a; --done:#56706d; color-scheme:dark}
+*{box-sizing:border-box}
+html{-webkit-tap-highlight-color:transparent}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 60px}
+.wrap{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+header{display:flex;align-items:center;gap:18px}
+.ring{width:84px;height:84px;flex:none;position:relative}
+.ring svg{transform:rotate(-90deg)}
+.ring .pct{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--display);font-weight:700;font-size:20px;font-variant-numeric:tabular-nums}
+.eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+h1{font-family:var(--display);font-weight:700;font-size:34px;line-height:1;margin:4px 0 6px;text-wrap:balance}
+.sub{color:var(--muted);margin:0;font-size:15px}
+
+/* timer */
+.timer{background:var(--ink);color:var(--bg);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.timer-top{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.clock{font-family:var(--display);font-weight:700;font-size:48px;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.01em;flex:1;min-width:0}
+.timer .btn{background:var(--sun);color:var(--sunink)}
+.timer .ghost{background:none;color:var(--bg);border:1px solid color-mix(in srgb,var(--bg) 35%,transparent)}
+.lens{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.lens span{font-size:13px;opacity:.75;margin-right:4px}
+.len{font:inherit;font-size:14px;font-weight:600;border-radius:999px;padding:5px 12px;cursor:pointer;background:none;color:var(--bg);border:1px solid color-mix(in srgb,var(--bg) 35%,transparent);font-variant-numeric:tabular-nums}
+.len[aria-pressed="true"]{background:var(--bg);color:var(--ink);border-color:var(--bg)}
+.len:disabled{opacity:.4;cursor:default}
+.tbar{height:4px;border-radius:2px;background:color-mix(in srgb,var(--bg) 20%,transparent);overflow:hidden}
+.tbar i{display:block;height:100%;background:var(--sun);transition:width 1s linear}
+.timeup{background:var(--sun);color:var(--sunink);border-radius:14px;padding:14px 16px;font-weight:600;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.timeup p{margin:0;flex:1;min-width:0}
+
+/* rooms */
+.room{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.room.upfirst{border:2px solid var(--sun)}
+.room-head{display:flex;align-items:center;gap:10px;padding:14px 16px;cursor:pointer;user-select:none}
+.room-head h2{font-family:var(--display);font-weight:500;font-size:21px;margin:0;flex:1;min-width:0}
+.upfirst .room-head{cursor:default}
+.upfirst .room-head small{display:block;font-family:var(--body);font-size:13px;color:var(--muted);font-weight:400;margin-top:2px}
+.count{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.bar{height:3px;background:var(--line)} .bar i{display:block;height:100%;background:var(--accent);transition:width .3s}
+.room.complete .bar i{background:var(--sun)}
+.room.complete:not(.upfirst) h2::after{content:" ✓";color:var(--accent)}
+ul{list-style:none;margin:0;padding:6px 8px 8px}
+li{display:flex;align-items:center;gap:12px;padding:9px 8px;border-radius:10px}
+li:hover{background:color-mix(in srgb,var(--accent) 7%,transparent)}
+li label{flex:1;display:flex;align-items:center;gap:12px;cursor:pointer;min-width:0}
+.tag{font-size:12px;font-weight:600;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:1px 8px;white-space:nowrap}
+.skips{font-size:12px;color:var(--muted);white-space:nowrap}
+input[type=checkbox]{appearance:none;width:22px;height:22px;border:2px solid var(--muted);border-radius:7px;flex:none;display:grid;place-items:center;cursor:pointer;margin:0}
+input[type=checkbox]:checked{background:var(--accent);border-color:var(--accent)}
+input[type=checkbox]:checked::after{content:"";width:6px;height:11px;border:solid var(--surface);border-width:0 2.5px 2.5px 0;transform:translate(0,-1px) rotate(45deg)}
+li.on .t{color:var(--done);text-decoration:line-through}
+.x{background:none;border:0;color:var(--muted);font-size:18px;cursor:pointer;padding:2px 6px;border-radius:6px;opacity:0;line-height:1}
+li:hover .x,.x:focus-visible{opacity:1}
+@media (hover:none){.x{opacity:.6}}
+.add{display:flex;gap:8px;padding:0 16px 14px}
+.add input,.newroom input{flex:1;min-width:0;font:inherit;font-size:15px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 12px}
+button.btn{font:inherit;font-weight:600;font-size:14px;border:0;border-radius:10px;padding:9px 14px;background:var(--accent);color:var(--surface);cursor:pointer}
+button.ghost{background:none;color:var(--muted);border:1px solid var(--line)}
+.room.collapsed ul,.room.collapsed .add,.room.collapsed .del-room{display:none}
+.chev{color:var(--muted);transition:transform .2s} .room.collapsed .chev{transform:rotate(-90deg)}
+.newroom{display:flex;gap:8px}
+.foot{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.del-room{font-size:13px;color:var(--muted);background:none;border:0;cursor:pointer;padding:0 16px 14px;text-decoration:underline}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.cheer{background:var(--sun);color:var(--sunink);border-radius:14px;padding:14px 16px;font-weight:600}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="ring" aria-hidden="true">
+      <svg width="84" height="84" viewBox="0 0 84 84">
+        <circle cx="42" cy="42" r="36" fill="none" stroke="var(--line)" stroke-width="8"/>
+        <circle id="arc" cx="42" cy="42" r="36" fill="none" stroke="var(--accent)" stroke-width="8" stroke-linecap="round" stroke-dasharray="226.2" stroke-dashoffset="226.2" style="transition:stroke-dashoffset .4s"/>
+      </svg>
+      <div class="pct" id="pct">0%</div>
+    </div>
+    <div>
+      <div class="eyebrow" id="date">Today</div>
+      <h1>Tidy Rounds</h1>
+      <p class="sub" id="summary">Your daily reset, room by room.</p>
+    </div>
+  </header>
+
+  <section class="timer" aria-label="Cleaning timer">
+    <div class="timer-top">
+      <div class="clock" id="clock" role="timer" aria-live="off">20:00</div>
+      <button class="btn" id="tGo" type="button">Start</button>
+      <button class="btn ghost" id="tReset" type="button" hidden>Reset</button>
+    </div>
+    <div class="tbar"><i id="tFill" style="width:0%"></i></div>
+    <div class="lens" id="lens"><span>Today's cap</span></div>
+  </section>
+
+  <div class="timeup" id="timeup" hidden>
+    <p id="timeupMsg">Time's up. Put the sponge down. Whatever's left moves to the top tomorrow.</p>
+    <button class="btn ghost" id="tDismiss" type="button" style="border-color:var(--sunink);color:var(--sunink)">Got it</button>
+  </div>
+
+  <div id="cheer" class="cheer" hidden>Every task is done for today. Go sit somewhere clean.</div>
+  <div id="rooms" style="display:flex;flex-direction:column;gap:14px"></div>
+
+  <form class="newroom" id="roomForm">
+    <input id="roomName" placeholder="Add a room (Office, Entryway…)" aria-label="New room name">
+    <button class="btn" type="submit">Add room</button>
+  </form>
+  <div class="foot">
+    <button class="btn ghost" id="resetDay" type="button">Uncheck everything</button>
+    <span class="sub" style="font-size:13px;align-self:center">Checks clear each morning. Skipped tasks jump to Up first.</span>
+  </div>
+</div>
+
+<script>
+const KEY="tidyRounds.v1";
+const LENS=[10,15,20,30];
+const ymd=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+const today=()=>ymd(new Date());
+const uid=()=>Math.random().toString(36).slice(2,9);
+const seed=()=>({day:today(),rooms:[
+  {name:"Kitchen",tasks:["Wash or load dishes","Wipe counters & stovetop","Clear the sink","Sweep the floor","Take out trash if full"]},
+  {name:"Bathroom",tasks:["Wipe sink & mirror","Quick toilet swish","Hang towels up","Put products away"]},
+  {name:"Bedroom",tasks:["Make the bed","Clothes in hamper or closet","Clear nightstand"]},
+  {name:"Living Room",tasks:["Fluff & fold blankets","Clear coffee table","Return stray things to their rooms"]},
+].map(r=>({id:uid(),name:r.name,collapsed:false,tasks:r.tasks.map(t=>({id:uid(),text:t,done:false,skips:0}))}))});
+
+let state;
+try{state=JSON.parse(localStorage.getItem(KEY))}catch(e){}
+if(!state||!state.rooms)state=seed();
+state.timer=state.timer||{len:20,end:null,left:null};
+state.rooms.forEach(r=>r.tasks.forEach(t=>{t.skips=t.skips||0}));
+
+/* New day: anything left unchecked on a day you actually cleaned gets a skip and moves to Up first.
+   Days you didn't open the app don't pile up — the Up first list just waits for you. */
+function rollover(){
+  if(state.day===today())return;
+  const all=state.rooms.flatMap(r=>r.tasks);
+  const cleaned=all.some(t=>t.done);
+  all.forEach(t=>{
+    if(cleaned) t.skips=t.done?0:t.skips+1;
+    t.done=false;
+  });
+  state.day=today();
+  state.timer.end=null;state.timer.left=null;state.timeupSeen=false;
+}
+rollover();
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}};
+save();
+
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const taskLi=(t,roomName)=>`<li class="${t.done?"on":""}" data-task="${t.id}">
+  <label><input type="checkbox" id="c-${t.id}" ${t.done?"checked":""}><span class="t">${esc(t.text)}</span></label>
+  ${roomName?`<span class="tag">${esc(roomName)}</span>`:""}
+  ${roomName&&t.skips>1?`<span class="skips">${t.skips} days</span>`:""}
+  ${roomName?"":`<button class="x" data-act="rmTask" aria-label="Remove ${esc(t.text)}">×</button>`}</li>`;
+
+function render(){
+  const el=document.getElementById("rooms");
+  const carried=state.rooms.flatMap(r=>r.tasks.filter(t=>t.skips>0).map(t=>({t,r})))
+    .sort((a,b)=>b.t.skips-a.t.skips);
+  let html="";
+  if(carried.length){
+    const d=carried.filter(c=>c.t.done).length;
+    html+=`<section class="room upfirst ${d===carried.length?"complete":""}">
+      <div class="room-head"><h2>Up first<small>What you didn't get to last time. Longest-waiting on top.</small></h2><span class="count">${d}/${carried.length}</span></div>
+      <div class="bar"><i style="width:${d/carried.length*100}%"></i></div>
+      <ul>${carried.map(c=>taskLi(c.t,c.r.name).replace("<li ",`<li data-room="${c.r.id}" `)).join("")}</ul>
+    </section>`;
+  }
+  html+=state.rooms.map(r=>{
+    const fresh=r.tasks.filter(t=>t.skips===0);
+    const n=r.tasks.length,d=r.tasks.filter(t=>t.done).length,complete=n&&d===n;
+    const moved=n-fresh.length;
+    return `<section class="room ${r.collapsed?"collapsed":""} ${complete?"complete":""}" data-room="${r.id}">
+      <div class="room-head" data-act="toggle" role="button" tabindex="0" aria-expanded="${!r.collapsed}">
+        <h2>${esc(r.name)}</h2><span class="count">${d}/${n}</span><span class="chev">▾</span>
+      </div>
+      <div class="bar"><i style="width:${n?d/n*100:0}%"></i></div>
+      <ul>${fresh.map(t=>taskLi(t)).join("")}${moved?`<li class="sub" style="font-size:13px;padding-left:42px">+ ${moved} in Up first</li>`:""}</ul>
+      <form class="add" data-act="addTask"><input id="a-${r.id}" placeholder="Add a task" aria-label="Add a task to ${esc(r.name)}"><button class="btn ghost" type="submit">Add</button></form>
+      <button class="del-room" data-act="rmRoom" type="button">${r.confirm?"Tap again to remove "+esc(r.name):"Remove room"}</button>
+    </section>`}).join("");
+  el.innerHTML=html;
+  const all=state.rooms.flatMap(r=>r.tasks),done=all.filter(t=>t.done).length,p=all.length?Math.round(done/all.length*100):0;
+  document.getElementById("pct").textContent=p+"%";
+  document.getElementById("arc").style.strokeDashoffset=226.2*(1-p/100);
+  document.getElementById("summary").textContent=all.length?`${done} of ${all.length} tasks done today`:"Add a room to get started.";
+  document.getElementById("cheer").hidden=!(all.length&&done===all.length);
+}
+document.getElementById("date").textContent=new Date().toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric"});
+
+const findTask=id=>{for(const r of state.rooms){const t=r.tasks.find(t=>t.id===id);if(t)return{r,t}}return{}};
+const roomEl=e=>state.rooms.find(r=>r.id===e.target.closest("[data-room]")?.dataset.room);
+const rooms=document.getElementById("rooms");
+rooms.addEventListener("change",e=>{
+  const {t}=findTask(e.target.closest("[data-task]")?.dataset.task);
+  if(t){t.done=e.target.checked;save();render()}
+});
+rooms.addEventListener("click",e=>{
+  const act=e.target.closest("[data-act]")?.dataset.act,r=roomEl(e);if(!r||!act)return;
+  if(act==="toggle"){r.collapsed=!r.collapsed}
+  else if(act==="rmTask"){r.tasks=r.tasks.filter(t=>t.id!==e.target.closest("[data-task]").dataset.task)}
+  else if(act==="rmRoom"){if(r.confirm){state.rooms=state.rooms.filter(x=>x!==r)}else{r.confirm=true;setTimeout(()=>{r.confirm=false;render()},3000)}}
+  else return;
+  save();render();
+});
+rooms.addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&e.target.dataset.act==="toggle"){e.preventDefault();e.target.click()}});
+rooms.addEventListener("submit",e=>{
+  e.preventDefault();const r=roomEl(e),v=e.target.querySelector("input").value.trim();
+  if(r&&v){r.tasks.push({id:uid(),text:v,done:false,skips:0});save();render();document.getElementById("a-"+r.id)?.focus()}
+});
+document.getElementById("roomForm").addEventListener("submit",e=>{
+  e.preventDefault();const inp=document.getElementById("roomName"),v=inp.value.trim();
+  if(v){state.rooms.push({id:uid(),name:v,tasks:[],collapsed:false});inp.value="";save();render()}
+});
+document.getElementById("resetDay").addEventListener("click",()=>{state.rooms.forEach(r=>r.tasks.forEach(t=>t.done=false));save();render()});
+
+/* ---- timer ---- */
+const T=state.timer, $=id=>document.getElementById(id);
+const lensEl=$("lens");
+LENS.forEach(m=>{const b=document.createElement("button");b.type="button";b.className="len";b.textContent=m+" min";b.dataset.m=m;b.id="len-"+m;lensEl.appendChild(b)});
+lensEl.addEventListener("click",e=>{const m=+e.target.dataset.m;if(m&&!running()&&T.left==null){T.len=m;save();tick()}});
+const running=()=>T.end!=null;
+const remaining=()=>running()?Math.max(0,T.end-Date.now()):(T.left!=null?T.left:T.len*60000);
+const fmt=ms=>{const s=Math.ceil(ms/1000);return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0")};
+let ac;
+function chime(){try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();[0,.22,.44].forEach((d,i)=>{const o=ac.createOscillator(),g=ac.createGain();o.frequency.value=[660,880,990][i];g.gain.setValueAtTime(.0001,ac.currentTime+d);g.gain.exponentialRampToValueAtTime(.2,ac.currentTime+d+.02);g.gain.exponentialRampToValueAtTime(.0001,ac.currentTime+d+.5);o.connect(g).connect(ac.destination);o.start(ac.currentTime+d);o.stop(ac.currentTime+d+.55)})}catch(e){}}
+function finish(){
+  T.end=null;T.left=0;
+  const left=state.rooms.flatMap(r=>r.tasks).filter(t=>!t.done).length;
+  $("timeupMsg").textContent=left?`Time's up. Put the sponge down. ${left} task${left===1?"":"s"} will be waiting in Up first tomorrow.`:"Time's up, and you finished everything. Nice.";
+  $("timeup").hidden=false;chime();save();
+}
+function tick(){
+  if(running()&&remaining()<=0)finish();
+  const rem=remaining(),total=T.len*60000;
+  $("clock").textContent=fmt(rem);
+  $("tFill").style.width=((total-rem)/total*100)+"%";
+  $("tGo").textContent=running()?"Pause":(T.left===0?"Done":(T.left!=null?"Resume":"Start"));
+  $("tGo").disabled=T.left===0;
+  $("tReset").hidden=!(running()||T.left!=null);
+  lensEl.querySelectorAll(".len").forEach(b=>{b.setAttribute("aria-pressed",+b.dataset.m===T.len);b.disabled=running()||T.left!=null});
+}
+$("tGo").addEventListener("click",()=>{
+  try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();ac.resume()}catch(e){}
+  if(running()){T.left=remaining();T.end=null}else{T.end=Date.now()+remaining();T.left=null;$("timeup").hidden=true}
+  save();tick();
+});
+$("tReset").addEventListener("click",()=>{T.end=null;T.left=null;$("timeup").hidden=true;save();tick()});
+$("tDismiss").addEventListener("click",()=>{$("timeup").hidden=true});
+setInterval(()=>{if(state.day!==today()){rollover();save();render()}tick()},500);
+
+render();tick();
+if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(()=>{})}
+</script>
+</body>
+</html>
