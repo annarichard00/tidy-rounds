@@ -30,6 +30,7 @@
   --bg:#0f1c1f; --surface:#162a2e; --ink:#e3efed; --muted:#93aaa7; --line:#24403f;
   --accent:#4fc1ac; --sun:#f2c14e; --sunink:#17323a; --done:#56706d; color-scheme:dark}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html{-webkit-tap-highlight-color:transparent}
 :root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 body{margin:0}
@@ -262,6 +263,16 @@ function finish(){
   const left=state.rooms.flatMap(r=>r.tasks).filter(t=>!t.done).length;
   $("timeupMsg").textContent=left?`Time's up. Put the sponge down. ${left} task${left===1?"":"s"} will be waiting in Up first tomorrow.`:"Time's up, and you finished everything. Nice.";
   $("timeup").hidden=false;chime();save();
+  notify($("timeupMsg").textContent);
+}
+function notify(body){
+  try{
+    if(!("Notification" in window)||Notification.permission!=="granted")return;
+    const opts={body,icon:"icons/icon-192.png",badge:"icons/icon-192.png",tag:"tidy-timer"};
+    if(navigator.serviceWorker&&navigator.serviceWorker.ready){
+      navigator.serviceWorker.ready.then(r=>r.showNotification("Tidy Rounds",opts)).catch(()=>{try{new Notification("Tidy Rounds",opts)}catch(e){}});
+    }else{new Notification("Tidy Rounds",opts)}
+  }catch(e){}
 }
 function tick(){
   if(running()&&remaining()<=0)finish();
@@ -275,6 +286,7 @@ function tick(){
 }
 $("tGo").addEventListener("click",()=>{
   try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();ac.resume()}catch(e){}
+  try{if("Notification" in window&&Notification.permission==="default")Notification.requestPermission().catch(()=>{})}catch(e){}
   if(running()){T.left=remaining();T.end=null}else{T.end=Date.now()+remaining();T.left=null;$("timeup").hidden=true}
   save();tick();
 });

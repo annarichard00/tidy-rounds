@@ -1,6 +1,6 @@
 // Service worker: lets Tidy Rounds open even with no internet.
 // Bump VERSION whenever you change any file below so phones pick up the update.
-const VERSION = "tr-v1";
+const VERSION = "tr-v2";
 const FILES = [
   "./",
   "./index.html",
@@ -35,5 +35,15 @@ self.addEventListener("fetch", (e) => {
         return res;
       })
       .catch(() => caches.match(e.request))
+  );
+});
+
+// Tapping the "time's up" notification brings the app back up.
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  e.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((cs) =>
+      cs.length ? cs[0].focus() : self.clients.openWindow("./")
+    )
   );
 });
