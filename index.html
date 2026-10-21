@@ -16,7 +16,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap">
 <style>
-/* Layout: one narrow column — timer bar on top, "Up first" leftovers, then room cards you tick through */
+/* Layout: one narrow column — Siri cue on top, "Up first" leftovers, then room cards you tick through */
 :root{
   --bg:#eef4f3; --surface:#ffffff; --ink:#17323a; --muted:#5d7379; --line:#d3e1df;
   --accent:#1f7a6d; --sun:#f2c14e; --sunink:#17323a; --done:#9bb3b0;
@@ -45,22 +45,11 @@ header{display:flex;align-items:center;gap:18px}
 h1{font-family:var(--display);font-weight:700;font-size:34px;line-height:1;margin:4px 0 6px;text-wrap:balance}
 .sub{color:var(--muted);margin:0;font-size:15px}
 
-/* timer */
-.timer{background:var(--ink);color:var(--bg);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:12px}
-.timer-top{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
-.clock{font-family:var(--display);font-weight:700;font-size:48px;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.01em;flex:1;min-width:0}
-.timer .btn{background:var(--sun);color:var(--sunink)}
-.timer .ghost{background:none;color:var(--bg);border:1px solid color-mix(in srgb,var(--bg) 35%,transparent)}
-.lens{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
-.lens span{font-size:13px;opacity:.75;margin-right:4px}
-.len{font:inherit;font-size:14px;font-weight:600;border-radius:999px;padding:5px 12px;cursor:pointer;background:none;color:var(--bg);border:1px solid color-mix(in srgb,var(--bg) 35%,transparent);font-variant-numeric:tabular-nums}
-.len[aria-pressed="true"]{background:var(--bg);color:var(--ink);border-color:var(--bg)}
-.len:disabled{opacity:.4;cursor:default}
-.tbar{height:4px;border-radius:2px;background:color-mix(in srgb,var(--bg) 20%,transparent);overflow:hidden}
-.tbar i{display:block;height:100%;background:var(--sun);transition:width 1s linear}
-.timeup{background:var(--sun);color:var(--sunink);border-radius:14px;padding:14px 16px;font-weight:600;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-.timeup p{margin:0;flex:1;min-width:0}
-
+/* siri cue */
+.cue{background:var(--ink);color:var(--bg);border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:4px}
+.cue .eyebrow{color:var(--sun)}
+.cue p{margin:0;font-family:var(--display);font-weight:500;font-size:22px;line-height:1.25;text-wrap:balance}
+.cue small{font-size:14px;opacity:.75}
 /* rooms */
 .room{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
 .room.upfirst{border:2px solid var(--sun)}
@@ -116,20 +105,11 @@ button.ghost{background:none;color:var(--muted);border:1px solid var(--line)}
     </div>
   </header>
 
-  <section class="timer" aria-label="Cleaning timer">
-    <div class="timer-top">
-      <div class="clock" id="clock" role="timer" aria-live="off">20:00</div>
-      <button class="btn" id="tGo" type="button">Start</button>
-      <button class="btn ghost" id="tReset" type="button" hidden>Reset</button>
-    </div>
-    <div class="tbar"><i id="tFill" style="width:0%"></i></div>
-    <div class="lens" id="lens"><span>Today's cap</span></div>
+  <section class="cue" aria-label="Before you start">
+    <div class="eyebrow">Before you start</div>
+    <p>"Hey Siri, set a timer for 20 minutes."</p>
+    <small>When it goes off, you're done. Whatever's left goes to Up first tomorrow.</small>
   </section>
-
-  <div class="timeup" id="timeup" hidden>
-    <p id="timeupMsg">Time's up. Put the sponge down. Whatever's left moves to the top tomorrow.</p>
-    <button class="btn ghost" id="tDismiss" type="button" style="border-color:var(--sunink);color:var(--sunink)">Got it</button>
-  </div>
 
   <div id="cheer" class="cheer" hidden>Every task is done for today. Go sit somewhere clean.</div>
   <div id="rooms" style="display:flex;flex-direction:column;gap:14px"></div>
@@ -160,7 +140,7 @@ const seed=()=>({day:today(),rooms:[
 let state;
 try{state=JSON.parse(localStorage.getItem(KEY))}catch(e){}
 if(!state||!state.rooms)state=seed();
-state.timer=state.timer||{len:20,end:null,left:null};
+delete state.timer;
 state.rooms.forEach(r=>r.tasks.forEach(t=>{t.skips=t.skips||0}));
 
 /* New day: anything left unchecked on a day you actually cleaned gets a skip and moves to Up first.
@@ -174,7 +154,6 @@ function rollover(){
     t.done=false;
   });
   state.day=today();
-  state.timer.end=null;state.timer.left=null;state.timeupSeen=false;
 }
 rollover();
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}};
@@ -248,53 +227,10 @@ document.getElementById("roomForm").addEventListener("submit",e=>{
 });
 document.getElementById("resetDay").addEventListener("click",()=>{state.rooms.forEach(r=>r.tasks.forEach(t=>t.done=false));save();render()});
 
-/* ---- timer ---- */
-const T=state.timer, $=id=>document.getElementById(id);
-const lensEl=$("lens");
-LENS.forEach(m=>{const b=document.createElement("button");b.type="button";b.className="len";b.textContent=m+" min";b.dataset.m=m;b.id="len-"+m;lensEl.appendChild(b)});
-lensEl.addEventListener("click",e=>{const m=+e.target.dataset.m;if(m&&!running()&&T.left==null){T.len=m;save();tick()}});
-const running=()=>T.end!=null;
-const remaining=()=>running()?Math.max(0,T.end-Date.now()):(T.left!=null?T.left:T.len*60000);
-const fmt=ms=>{const s=Math.ceil(ms/1000);return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0")};
-let ac;
-function chime(){try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();[0,.22,.44].forEach((d,i)=>{const o=ac.createOscillator(),g=ac.createGain();o.frequency.value=[660,880,990][i];g.gain.setValueAtTime(.0001,ac.currentTime+d);g.gain.exponentialRampToValueAtTime(.2,ac.currentTime+d+.02);g.gain.exponentialRampToValueAtTime(.0001,ac.currentTime+d+.5);o.connect(g).connect(ac.destination);o.start(ac.currentTime+d);o.stop(ac.currentTime+d+.55)})}catch(e){}}
-function finish(){
-  T.end=null;T.left=0;
-  const left=state.rooms.flatMap(r=>r.tasks).filter(t=>!t.done).length;
-  $("timeupMsg").textContent=left?`Time's up. Put the sponge down. ${left} task${left===1?"":"s"} will be waiting in Up first tomorrow.`:"Time's up, and you finished everything. Nice.";
-  $("timeup").hidden=false;chime();save();
-  notify($("timeupMsg").textContent);
-}
-function notify(body){
-  try{
-    if(!("Notification" in window)||Notification.permission!=="granted")return;
-    const opts={body,icon:"icons/icon-192.png",badge:"icons/icon-192.png",tag:"tidy-timer"};
-    if(navigator.serviceWorker&&navigator.serviceWorker.ready){
-      navigator.serviceWorker.ready.then(r=>r.showNotification("Tidy Rounds",opts)).catch(()=>{try{new Notification("Tidy Rounds",opts)}catch(e){}});
-    }else{new Notification("Tidy Rounds",opts)}
-  }catch(e){}
-}
-function tick(){
-  if(running()&&remaining()<=0)finish();
-  const rem=remaining(),total=T.len*60000;
-  $("clock").textContent=fmt(rem);
-  $("tFill").style.width=((total-rem)/total*100)+"%";
-  $("tGo").textContent=running()?"Pause":(T.left===0?"Done":(T.left!=null?"Resume":"Start"));
-  $("tGo").disabled=T.left===0;
-  $("tReset").hidden=!(running()||T.left!=null);
-  lensEl.querySelectorAll(".len").forEach(b=>{b.setAttribute("aria-pressed",+b.dataset.m===T.len);b.disabled=running()||T.left!=null});
-}
-$("tGo").addEventListener("click",()=>{
-  try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();ac.resume()}catch(e){}
-  try{if("Notification" in window&&Notification.permission==="default")Notification.requestPermission().catch(()=>{})}catch(e){}
-  if(running()){T.left=remaining();T.end=null}else{T.end=Date.now()+remaining();T.left=null;$("timeup").hidden=true}
-  save();tick();
-});
-$("tReset").addEventListener("click",()=>{T.end=null;T.left=null;$("timeup").hidden=true;save();tick()});
-$("tDismiss").addEventListener("click",()=>{$("timeup").hidden=true});
-setInterval(()=>{if(state.day!==today()){rollover();save();render()}tick()},500);
+setInterval(()=>{if(state.day!==today()){rollover();save();render()}},30000);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&state.day!==today()){rollover();save();render()}});
 
-render();tick();
+render();
 if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(()=>{})}
 </script>
 </body>

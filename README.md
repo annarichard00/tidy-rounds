@@ -1,11 +1,11 @@
 # Tidy Rounds
 
-A daily cleaning checklist, room by room, with a timer so cleaning doesn't eat the whole day.
+A daily cleaning checklist, room by room. Set a Siri timer, do what you can, and stop when it goes off.
 
 ## What it does
 
 - Rooms with daily tasks you check off; checks clear each morning
-- Set a cap (10, 15, 20 or 30 minutes), hit Start, and do what you can
+- Ask Siri for a 20-minute timer and do what you can before it goes off
 - Anything you didn't get to shows up in **Up first** at the top the next day, longest-waiting first
 - Days you don't clean don't pile up — Up first just waits for you
 - Add or remove rooms and tasks; everything saves on the device
