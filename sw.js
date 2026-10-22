@@ -1,6 +1,6 @@
 // Service worker: lets Tidy Rounds open even with no internet.
 // Bump VERSION whenever you change any file below so phones pick up the update.
-const VERSION = "tr-v4";
+const VERSION = "tr-v5";
 const FILES = [
   "./",
   "./index.html",

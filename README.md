@@ -9,6 +9,7 @@ A daily cleaning checklist, room by room. Set a Siri timer, do what you can, and
 - Anything you didn't get to shows up in **Up first** at the top the next day, longest-waiting first
 - Days you don't clean don't pile up — Up first just waits for you
 - Add or remove rooms and tasks; everything saves on the device
+- Backup & restore: copy your rooms and tasks as text (keep it in Notes) and paste it back after re-adding the app
 
 ## Files
 

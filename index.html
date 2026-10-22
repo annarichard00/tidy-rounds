@@ -83,6 +83,11 @@ button.ghost{background:none;color:var(--muted);border:1px solid var(--line)}
 .newroom{display:flex;gap:8px}
 .foot{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
 .del-room{font-size:13px;color:var(--muted);background:none;border:0;cursor:pointer;padding:0 16px 14px;text-decoration:underline}
+.backup{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.backup summary{cursor:pointer;font-weight:600}
+.backup .hint{margin:8px 0 0;font-size:14px;color:var(--muted)}
+.backup textarea{width:100%;margin-top:10px;font:inherit;font-size:13px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 10px;resize:vertical}
+.bkrow{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .cheer{background:var(--sun);color:var(--sunink);border-radius:14px;padding:14px 16px;font-weight:600}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -118,6 +123,13 @@ button.ghost{background:none;color:var(--muted);border:1px solid var(--line)}
     <input id="roomName" placeholder="Add a room (Office, Entryway…)" aria-label="New room name">
     <button class="btn" type="submit">Add room</button>
   </form>
+  <details class="backup">
+    <summary>Backup &amp; restore</summary>
+    <p class="hint">Moving phones or re-adding the app? Copy a backup first, then paste it back here.</p>
+    <div class="bkrow"><button class="btn" type="button" id="copyBk">Copy backup</button><span id="bkMsg" class="hint" style="margin:0;align-self:center"></span></div>
+    <textarea id="bkText" rows="3" placeholder="Paste a backup here" aria-label="Backup text"></textarea>
+    <div class="bkrow"><button class="btn" type="button" id="restoreBk">Restore</button></div>
+  </details>
   <div class="foot">
     <button class="btn ghost" id="resetDay" type="button">Uncheck everything</button>
     <span class="sub" style="font-size:13px;align-self:center">Checks clear each morning. Skipped tasks jump to Up first.</span>
@@ -227,6 +239,18 @@ document.getElementById("roomForm").addEventListener("submit",e=>{
 });
 document.getElementById("resetDay").addEventListener("click",()=>{state.rooms.forEach(r=>r.tasks.forEach(t=>t.done=false));save();render()});
 
+const bkMsg=t=>{const m=document.getElementById("bkMsg");m.textContent=t;setTimeout(()=>{m.textContent=""},3000)};
+document.getElementById("copyBk").addEventListener("click",async()=>{
+  const txt=JSON.stringify(state);
+  try{await navigator.clipboard.writeText(txt);bkMsg("Copied. Paste it in Notes to keep it safe.")}
+  catch(e){const t=document.getElementById("bkText");t.value=txt;t.select();bkMsg("Select all and copy the text below.")}
+});
+document.getElementById("restoreBk").addEventListener("click",()=>{
+  let s;try{s=JSON.parse(document.getElementById("bkText").value.trim())}catch(e){}
+  if(!s||!Array.isArray(s.rooms)){bkMsg("That doesn't look like a backup.");return}
+  s.rooms.forEach(r=>{r.tasks=r.tasks||[];r.tasks.forEach(t=>{t.skips=t.skips||0})});
+  state=s;rollover();save();document.getElementById("bkText").value="";render();bkMsg("Restored ✓");
+});
 setInterval(()=>{if(state.day!==today()){rollover();save();render()}},30000);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&state.day!==today()){rollover();save();render()}});
 
